@@ -1,17 +1,24 @@
-import requests
+import os
 from twilio.rest import Client
+import requests
 
 OWM_Endpoint = "https://api.openweathermap.org/data/2.5/forecast"
-api_key = "1411bc433e82abdeb1a9f61b485c113d"
-auth_token = "48ed6e94ffcae52b70fb7de3631e5196"
-account_sid = "AC25519d68fc8a4ad3cb644f419990d62e"
+
+# Load sensitive data from environment variables
+api_key = os.getenv("OWM_API_KEY")
+auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+from_phone = os.getenv("TWILIO_FROM_PHONE")
+to_phone = os.getenv("RECIPIENT_PHONE")
 
 weather_params = {
-    "lat": 19.0760,  
-    "lon": 72.8777,  
+    "lat": 19.0760,  # Latitude for location
+    "lon": 72.8777,  # Longitude for location
     "appid": api_key,  # API Key
-    "cnt": 4,          # Number of forecasts to retrieve
+    "cnt": 4,         # Number of forecasts to retrieve
 }
+
+# Fetch weather data
 
 # Fetch weather data
 response = requests.get(OWM_Endpoint, params=weather_params)
@@ -33,9 +40,9 @@ if will_rain:
     client = Client(account_sid, auth_token)
     message = client.messages.create(
         body="It's going to rain today. Remember to bring an ☂️",
-        from_='+91 84989 15364',  # Your Twilio number
-        to='+18777804236'        # Recipient's number
+        from_='',  # Your Twilio number
+        to=''        # Recipient's number
     )
     print(f"Message Status: {message.status}")
 
-    
+
