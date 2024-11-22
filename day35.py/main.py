@@ -1,55 +1,68 @@
 import os
 from twilio.rest import Client
 import requests
+from dotenv import load_dotenv
 
-# OpenWeatherMap API endpoint
-OWM_Endpoint = "https://api.openweathermap.org/data/2.5/forecast"
+# Load environment variables from .env file
+load_dotenv()
 
-# Load sensitive data from environment variables
-api_key = os.getenv("OWM_API_KEY")        # OpenWeatherMap API Key
-auth_token = os.getenv("TWILIO_AUTH_TOKEN")  # Twilio Auth Token
-account_sid = os.getenv("TWILIO_ACCOUNT_SID")  # Twilio Account SID
-from_phone = os.getenv("TWILIO_FROM_PHONE")   # Twilio From Phone Number
-to_phone = os.getenv("RECIPIENT_PHONE")       # Recipient's Phone Number
+# Validate environment variables
+required_vars = [
+    "OWM_API_KEY",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_VIRTUAL_NUMBER",
+    "TWILIO_VERIFIED_NUMBER",
+    "RECIPIENT_PHONE",
+    "OWM_Endpoint",
+]
 
-# Weather parameters
+for var in required_vars:
+    if not os.getenv(var):
+        raise EnvironmentError(f"Environment variable {var} is missing")
+
+# Fetch environment variables
+api_key = os.getenv("OWM_API_KEY")
+auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+from_phone = os.getenv("TWILIO_VIRTUAL_NUMBER")
+to_phone = os.getenv("RECIPIENT_PHONE")
+OWM_Endpoint = os.getenv("OWM_Endpoint")
+
+# Weather parameters (you can adjust the location if needed)
 weather_params = {
     "lat": 19.0760,  # Latitude (Mumbai)
     "lon": 72.8777,  # Longitude (Mumbai)
-    "appid": api_key,  # OpenWeatherMap API Key
-    "cnt": 4,         # Number of forecast intervals to retrieve
+    "appid": api_key,
+    "cnt": 4,  # Number of forecast intervals (3-hour intervals)
 }
 
 try:
     # Fetch weather data
     response = requests.get(OWM_Endpoint, params=weather_params)
-    response.raise_for_status()
+    response.raise_for_status()  # Raises an HTTPError for bad responses
     weather_data = response.json()
 
-    # Initialize the rain detection flag
-    will_rain = False
+    # Initialize rain detection flag
+    will_rain = any(
+        int(hour_data["weather"][0]["id"]) < 700 for hour_data in weather_data["list"]
+    )
 
-    # Check weather conditions
-    for hour_data in weather_data["list"]:
-        condition_code = hour_data["weather"][0]["id"]
-        if int(condition_code) < 700:  # Weather codes < 700 indicate rain
-            will_rain = True
-            break  # Exit the loop if rain is detected
-
-    # Send SMS if it will rain
+    # Send SMS if rain is expected
     if will_rain:
         client = Client(account_sid, auth_token)
         message = client.messages.create(
             body="It's going to rain today. Remember to bring an ☂️",
             from_=from_phone,  # Your Twilio phone number
-            to=to_phone        # Recipient's phone number
+            to=to_phone,  # Recipient's phone number
         )
         print(f"Message sent successfully! Message SID: {message.sid}")
     else:
         print("No rain expected today!")
 
+except requests.exceptions.RequestException as e:
+    print(
+        "Error fetching weather data. Please check your network connection or API key."
+    )
 except Exception as e:
-    print(f"An error occurred: {e}")
-
-
-
+    print(f"An unexpected error occurred: {e}")
